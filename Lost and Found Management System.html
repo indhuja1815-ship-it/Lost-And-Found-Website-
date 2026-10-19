@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lost and Found Management System</title>
+<style>
+:root{--bg:#f2f5f9;--card:#fff;--text:#2b3340;--muted:#6b7380;--primary:#1f4e79;--green:#2e7d32;--gray:#666;--border:#c5ccd6;--ok-bg:#e3f4e4;--ok:#1b5e20;--err-bg:#fdeaea;--err:#b71c1c;--stripe:#f7f9fc;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171d;--card:#1c232c;--text:#e4e8ee;--muted:#9aa4b2;--primary:#3b78b0;--green:#3f9a45;--gray:#6f7782;--border:#3a4552;--ok-bg:#183a1b;--ok:#a5d6a7;--err-bg:#431a1a;--err:#ef9a9a;--stripe:#202934;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12171d;--card:#1c232c;--text:#e4e8ee;--muted:#9aa4b2;--primary:#3b78b0;--green:#3f9a45;--gray:#6f7782;--border:#3a4552;--ok-bg:#183a1b;--ok:#a5d6a7;--err-bg:#431a1a;--err:#ef9a9a;--stripe:#202934;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.5}
+header{background:var(--primary);color:#fff;padding:14px 16px;text-align:center}
+header h1{margin:0 0 10px;font-size:22px}
+nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+nav button{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:4px;padding:6px 12px;font-size:14px;cursor:pointer}
+nav button.active{background:#fff;color:#1f4e79}
+main{max-width:900px;margin:20px auto;padding:20px;background:var(--card);border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+@media (max-width:640px){main{margin:12px;padding:15px}header h1{font-size:18px}}
+h2{margin-top:0;color:var(--primary)}
+.btn{display:inline-block;padding:10px 18px;background:var(--primary);color:#fff;border:0;border-radius:4px;font-size:15px;cursor:pointer}
+.btn:hover{opacity:.85}.btn.green{background:var(--green)}.btn.gray{background:var(--gray)}
+.group{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+label{display:block;margin:12px 0 5px;font-weight:bold}
+input,textarea,select{width:100%;padding:9px;border:1px solid var(--border);border-radius:4px;font-size:15px;font-family:inherit;background:var(--card);color:var(--text)}
+form .btn{margin-top:18px}
+.msg{padding:10px;margin-bottom:14px;border-radius:4px}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}.msg.err{background:var(--err-bg);color:var(--err)}
+.hidden{display:none}
+.bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.bar input{flex:1;min-width:170px}.bar select{width:110px}
+.box{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px;border:1px solid var(--border);text-align:left;font-size:14px}
+th{background:var(--primary);color:#fff}
+tr:nth-child(even) td{background:var(--stripe)}
+.tag{padding:2px 8px;border-radius:10px;color:#fff;font-size:12px}
+.tag.Lost{background:#c62828}.tag.Found{background:#2e7d32}
+.note{color:var(--muted);font-size:13px}
+footer{text-align:center;padding:14px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Lost and Found Management System</h1>
+  <nav>
+    <button data-go="home">Home</button>
+    <button data-go="lost">Report Lost</button>
+    <button data-go="found">Report Found</button>
+    <button data-go="search">Search</button>
+  </nav>
+</header>
+
+<main>
+  <section id="home">
+    <h2>Welcome</h2>
+    <p>Lost something on campus? Found something that belongs to someone else? Use this website to report lost or found items and to search the items reported by other students.</p>
+    <div class="group">
+      <button class="btn" data-go="lost">Report Lost Item</button>
+      <button class="btn green" data-go="found">Report Found Item</button>
+      <button class="btn gray" data-go="search">Search Items</button>
+    </div>
+    <p class="note" style="margin-top:22px">This is a demo version. Items you add are saved only in this browser.</p>
+  </section>
+
+  <section id="lost" class="hidden"></section>
+  <section id="found" class="hidden"></section>
+
+  <section id="search" class="hidden">
+    <h2>Search Items</h2>
+    <div id="okmsg" class="msg ok hidden">Item reported successfully!</div>
+    <div class="bar">
+      <input type="text" id="kw" placeholder="Search by item name">
+      <select id="ft"><option>All</option><option>Lost</option><option>Found</option></select>
+    </div>
+    <div class="box">
+      <table>
+        <thead><tr><th>ID</th><th>Item Name</th><th>Description</th><th>Location</th><th>Date</th><th>Type</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="note"><span id="count"></span> <button class="btn gray" id="reset" style="padding:4px 10px;font-size:12px;margin-left:8px">Reset sample data</button></p>
+  </section>
+</main>
+<footer>College Mini Project</footer>
+
+<script>
+var KEY = "lostfound_items_v1";
+var sample = [
+  {id:1,name:"Black Wallet",desc:"Leather wallet with a college ID card",loc:"Library",date:"2026-10-15",type:"Lost"},
+  {id:2,name:"Blue Water Bottle",desc:"Steel bottle with a sticker on the side",loc:"Canteen",date:"2026-10-16",type:"Found"},
+  {id:3,name:"Scientific Calculator",desc:"Casio calculator with initials R.K. on the back",loc:"Exam Hall 2",date:"2026-10-14",type:"Lost"},
+  {id:4,name:"House Keys",desc:"Three keys on a red keychain",loc:"Parking Area",date:"2026-10-17",type:"Found"},
+  {id:5,name:"Grey Umbrella",desc:"Folding umbrella with a wooden handle",loc:"Main Gate",date:"2026-10-18",type:"Found"}
+];
+var items;
+try { var s = localStorage.getItem(KEY); items = s ? JSON.parse(s) : sample.slice(); } catch (e) { items = sample.slice(); }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {} }
+
+var today = new Date();
+today = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+
+function show(id) {
+  ["home", "lost", "found", "search"].forEach(function (n) {
+    document.getElementById(n).classList.toggle("hidden", n !== id);
+  });
+  document.querySelectorAll("nav button").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.go === id);
+  });
+  if (id === "search") render();
+  window.scrollTo(0, 0);
+}
+document.addEventListener("click", function (e) {
+  var go = e.target.closest("[data-go]");
+  if (go) { document.getElementById("okmsg").classList.add("hidden"); show(go.dataset.go); }
+});
+
+// Build the two report forms (same layout, different type)
+["Lost", "Found"].forEach(function (T) {
+  var t = T.toLowerCase();
+  document.getElementById(t).innerHTML =
+    "<h2>Report " + T + " Item</h2>" +
+    '<div class="msg err hidden" id="err-' + t + '"></div>' +
+    '<form id="form-' + t + '" novalidate>' +
+    '<label for="n-' + t + '">Item Name</label><input type="text" id="n-' + t + '" maxlength="100">' +
+    '<label for="d-' + t + '">Description</label><textarea id="d-' + t + '" rows="4" maxlength="500"></textarea>' +
+    '<label for="l-' + t + '">Location ' + T + '</label><input type="text" id="l-' + t + '" maxlength="100">' +
+    '<label for="t-' + t + '">Date ' + T + '</label><input type="date" id="t-' + t + '" max="' + today + '">' +
+    '<button type="submit" class="btn' + (t === "found" ? " green" : "") + '">Submit</button></form>';
+
+  document.getElementById("form-" + t).addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = document.getElementById("n-" + t).value.trim();
+    var desc = document.getElementById("d-" + t).value.trim();
+    var loc = document.getElementById("l-" + t).value.trim();
+    var date = document.getElementById("t-" + t).value;
+    var err = "";
+    if (!name || !desc || !loc || !date) err = "Please fill in all the fields.";
+    else if (name.length < 2) err = "Item name must have at least 2 characters.";
+    else if (date > today) err = "The date cannot be in the future.";
+    var box = document.getElementById("err-" + t);
+    if (err) { box.textContent = err; box.classList.remove("hidden"); return; }
+    box.classList.add("hidden");
+    var nextId = items.reduce(function (m, i) { return Math.max(m, i.id); }, 0) + 1;
+    items.push({id: nextId, name: name, desc: desc, loc: loc, date: date, type: T});
+    save();
+    this.reset();
+    document.getElementById("kw").value = "";
+    document.getElementById("ft").value = "All";
+    show("search");
+    document.getElementById("okmsg").classList.remove("hidden");
+  });
+});
+
+// Search page
+function render() {
+  var kw = document.getElementById("kw").value.trim().toLowerCase();
+  var ft = document.getElementById("ft").value;
+  var list = items.filter(function (i) {
+    return i.name.toLowerCase().indexOf(kw) !== -1 && (ft === "All" || i.type === ft);
+  }).sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; });
+  var body = document.getElementById("rows");
+  body.innerHTML = "";
+  list.forEach(function (i) {
+    var tr = document.createElement("tr");
+    [i.id, i.name, i.desc, i.loc, i.date].forEach(function (v) {
+      var td = document.createElement("td"); td.textContent = v; tr.appendChild(td);
+    });
+    var td = document.createElement("td");
+    var sp = document.createElement("span"); sp.className = "tag " + i.type; sp.textContent = i.type;
+    td.appendChild(sp); tr.appendChild(td); body.appendChild(tr);
+  });
+  if (!list.length) body.innerHTML = '<tr><td colspan="6" style="text-align:center">No items found.</td></tr>';
+  document.getElementById("count").textContent = list.length + " item(s) shown.";
+}
+document.getElementById("kw").addEventListener("input", render);
+document.getElementById("ft").addEventListener("change", render);
+document.getElementById("reset").addEventListener("click", function () {
+  items = sample.slice(); save(); render();
+});
+
+show("home");
+</script>
+</body>
+</html>
